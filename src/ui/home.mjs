@@ -8,7 +8,7 @@ import {
   importStage,
   importMessage,
 } from '../import/import-progress.mjs';
-import { telemetry, setAnalyticsConsent, savedConsent } from '../shared/telemetry.mjs';
+import { telemetry } from '../shared/telemetry.mjs';
 const $ = (id) => document.getElementById(id);
 let busy = false,
   rpc = null,
@@ -186,11 +186,13 @@ async function runImport(input, files = null, archive = null) {
   lastProgressPaint = -Infinity;
   setBusy(true);
   const id = (projectId = crypto.randomUUID());
+  const source = archive ? 'zip' : files ? 'folder' : 'github';
+  const started = performance.now();
   progress({ message: 'Preparing browser workers…' });
   let worker = null;
+  telemetry.track('import_started', { source });
   try {
     worker = rpc = new WorkerRPC(new URL('../import/project-worker.mjs', import.meta.url));
-    telemetry.track('import_started', { source: archive ? 'zip' : files ? 'folder' : 'github' });
     // Library rendering and storage-usage estimates are optional UI work. Never
     // make worker startup (or cancellation cleanup) depend on them completing.
     void refreshLibrary();
@@ -200,19 +202,26 @@ async function runImport(input, files = null, archive = null) {
       { onProgress: progress, initialResponseTimeoutMs: 15_000 },
     );
     telemetry.track('import_ready', {
+      source,
+      cache: result.cached ? 'hit' : 'miss',
       files: result.stats.files,
       bytes: result.stats.bytes || 0,
-      seconds: result.seconds || 0,
+      seconds: (performance.now() - started) / 1000,
     });
     setBusy(false);
     location.assign(projectURL(result.projectId));
   } catch (error) {
     if (error.name === 'AbortError') {
-      telemetry.track('import_cancelled');
+      telemetry.track('import_cancelled', {
+        source,
+        seconds: (performance.now() - started) / 1000,
+      });
       $('import-error').hidden = true;
     } else {
       showError(error);
       telemetry.track('import_failed', {
+        source,
+        seconds: (performance.now() - started) / 1000,
         reason: /storage|quota/i.test(error.message)
           ? 'storage'
           : /limit|budget/i.test(error.message)
@@ -328,14 +337,6 @@ $('cancel-import').onclick = async () => {
   }
   void refreshLibrary();
 };
-$('analytics-consent').checked = savedConsent();
-$('analytics-consent').disabled = !telemetry.configured || telemetry.privacyBlocked;
-$('analytics-consent').onchange = (e) => setAnalyticsConsent(e.target.checked);
-$('analytics-note').textContent = telemetry.privacyBlocked
-  ? 'Analytics disabled by your browser privacy preference.'
-  : telemetry.configured
-    ? 'Optional Umami events: coarse usage counts and timings. No code, repository names, search terms, or session replay.'
-    : 'Analytics are off. This installation has no analytics endpoint configured.';
 if (!navigator.gpu) {
   $('compatibility').hidden = false;
   $('compatibility').textContent =
@@ -347,7 +348,6 @@ window.addEventListener('beforeunload', (e) => {
     e.returnValue = '';
   }
 });
-telemetry.track('app_opened');
 refreshLibrary();
 // A small source-shaped illustration, not repository data or a raster placeholder.
 const svg = $('map-illustration'),

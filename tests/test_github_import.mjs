@@ -107,6 +107,8 @@ test('resolves default branch once to immutable commit and tree IDs', async () =
   assert.equal(result.tree, TREE);
   assert.equal(result.defaultBranch, 'main');
   assert.equal(result.url, 'https://github.com/owner/repository');
+  assert.equal(result.source, 'github');
+  assert.equal(result.public, true);
   assert.equal(progress.at(-1).stage, 'resolve');
   assert.equal(progress.at(-1).completed, 2);
 });

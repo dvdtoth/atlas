@@ -56,7 +56,7 @@ See [architecture and resource budgets](docs/architecture.md) for details.
 
 ## Privacy
 
-Source, file paths and search queries stay on your device. Public imports contact GitHub directly; the static host serves application assets. Local files are never uploaded. Optional Umami usage counters are **disabled by default** and require configuration and visitor consent. No analytics script, session replay or automatic page tracking is loaded.
+Source, file paths and search queries stay on your device. Public imports contact GitHub directly; the static host serves application assets. Local files are never uploaded. Optional Umami analytics require configuration and visitor consent. A separate opt-in can share the names of repositories imported from public GitHub. ZIP and folder names are always excluded. No external analytics script, session replay or page-content capture is loaded. See the [telemetry setup and event reference](docs/telemetry.md).
 
 See the [privacy page](https://dvdtoth.github.io/atlas/privacy.html) and [telemetry configuration](docs/telemetry.md).
 

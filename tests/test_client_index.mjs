@@ -29,6 +29,28 @@ const snapshot = (docs) =>
 const nodesOf = (result) =>
   Array.from({ length: result.manifest.count }, (_, i) => readNode(new DataView(result.nodes), i));
 
+test('snapshot repository analytics metadata requires verified public GitHub origin', async () => {
+  const d = doc('const a = 1;');
+  for (const origin of [
+    {},
+    { source: 'zip', public: true },
+    { source: 'folder', public: true },
+    { source: 'github' },
+    { source: 'github', public: false },
+    { source: 'github', public: true },
+  ]) {
+    const result = await buildSnapshot(
+      [documentMetadata(d)],
+      { ...repo, ...origin },
+      async () => d,
+    );
+    assert.equal(
+      result.manifest.publicRepository,
+      origin.source === 'github' && origin.public === true ? repo.fullName : null,
+    );
+  }
+});
+
 test('raw paging preserves exact logical rows, revision, CRLF, lone CR and no phantom final row', () => {
   const source = '\tαe\u0301\r\nsecond\nlast\r';
   const d = doc(source),

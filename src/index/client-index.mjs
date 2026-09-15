@@ -821,6 +821,8 @@ export async function buildSnapshot(metas, repo, readDocument, onProgress = () =
     previewSamples: SAMPLES,
     previewLimitBytes: BUFFER_LIMIT,
     sourceRepo,
+    importSource: repo.source || null,
+    publicRepository: repo.source === 'github' && repo.public === true ? repo.fullName : null,
     commit,
     projectId,
     source: {

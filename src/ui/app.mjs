@@ -1404,9 +1404,12 @@ async function boot() {
   for (const button of document.querySelectorAll('[data-mode]')) button.disabled = false;
   $('loading').style.display = 'none';
   telemetry.track('viewer_ready', {
+    source: manifest.importSource,
     seconds: (performance.now() - started) / 1000,
     files: manifest.stats.files,
   });
+  if (manifest.importSource === 'github' && manifest.publicRepository)
+    telemetry.track('repository_viewed', { source: 'github', repo: manifest.publicRepository });
   mark();
   const params = new URLSearchParams(location.hash.slice(1));
   if (params.has('file')) {

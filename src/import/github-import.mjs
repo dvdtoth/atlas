@@ -410,6 +410,8 @@ export async function resolveRepository(input, options = {}) {
     defaultBranch,
     ref: chosenRef,
     url: `https://github.com/${canonical.fullName}`,
+    source: 'github',
+    public: true,
   };
 }
 
