@@ -258,3 +258,10 @@ test('3D text candidates can expand on capable browsers and remain bounded on sm
   assert.ok(large.files.length > 192);
   assert.ok(large.files.length <= 640);
 });
+
+test('2D collection keeps subpixel source rows eligible for coloured minimap tiles', () => {
+  const scene = sceneOf([{ lines: 100, h: 104, w: 100 }]);
+  const result = visibility.collect2D(scene, { x: 50, y: 52, scale: 0.8 }, 180, 180);
+  assert.equal(result.files.length, 1);
+  assert.equal(result.files[0].projectedLineHeight, 0.8);
+});

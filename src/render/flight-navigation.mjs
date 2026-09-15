@@ -1,8 +1,14 @@
 import { foldAt, clamp, add, mul, norm, cross, length, look } from './core.mjs';
 import { orientFold } from './visibility.mjs';
 
-export function keyboardFlightSpeed(speed, cruise = 1, boost = false) {
-  return speed * cruise * (boost ? 4 : 1) * 0.5;
+export function projectFlightScale(lines) {
+  // Maps share normalized world bounds, so source volume distinguishes their
+  // scale. The fourth root slows small repositories without stranding tiny ones.
+  return clamp((Math.max(0, Number.isFinite(lines) ? lines : 0) / 5_000_000) ** 0.25, 0.15, 1);
+}
+
+export function keyboardFlightSpeed(speed, cruise = 1, boost = false, projectScale = 1) {
+  return speed * cruise * (boost ? 4 : 1) * 0.5 * projectScale;
 }
 
 // Aim in the same camera-facing source frame used by picking and text tiles.

@@ -1,7 +1,6 @@
 import { LocalSource } from '../index/local-source.mjs';
-import { TEXT_SCALES } from './text-detail.mjs';
+import { TEXT_SCALES, tileShape } from './text-detail.mjs';
 import {
-  TILE_COLUMNS,
   TILE_ROWS,
   CELL_WIDTH,
   ROW_HEIGHT,
@@ -10,8 +9,8 @@ import {
   layoutLine,
 } from './text-layout.mjs';
 
-// Protocol: tile {key,id,display,start,column,scale:.25|.5|1|2,background:'#rrggbb',revision?}
-// => tile {...,bitmap,width,height,revision,lineMap,columnMap,rows,elapsed}.
+// Protocol: tile {key,id,display,start,column,scale,revision?}
+// => tile {...,bitmap,width,height,revision,lineMap,columnMap,rows,tileRows,columns,elapsed}.
 // Cancellation {type:'cancel',keys:[...]}; canceled work produces no reply.
 // Optional revision enables exact-revision page reuse. Without it each completed
 // request fetches again; only simultaneous reads of the same page are shared.
@@ -158,10 +157,9 @@ function validateRequest(request) {
     !Number.isSafeInteger(request.column) ||
     request.column < 0 ||
     request.column > 1_000_000 ||
-    !TEXT_SCALES.includes(request.scale) ||
-    !/^#[0-9a-f]{6}$/i.test(request.background)
+    !TEXT_SCALES.includes(request.scale)
   ) {
-    throw new Error('Invalid tile address, raster scale, or opaque background');
+    throw new Error('Invalid tile address or raster scale');
   }
 }
 
@@ -169,15 +167,17 @@ function validateRequest(request) {
 export async function renderTile(request, signal, pages) {
   const started = performance.now();
   validateRequest(request);
-  const page = await pages.get(request, signal);
+  const { columns, rows: tileRows, width, height } = tileShape(request.scale);
+  const pageStart = Math.floor(request.start / TILE_ROWS) * TILE_ROWS;
+  const page = await pages.get({ ...request, start: pageStart }, signal);
   checkAbort(signal);
-  const width = TILE_COLUMNS * CELL_WIDTH * request.scale;
-  const height = TILE_ROWS * ROW_HEIGHT * request.scale;
+  const first = request.start - pageStart,
+    end = Math.min(first + tileRows, page.sourceLines.length);
   const canvas = new OffscreenCanvas(width, height);
-  const context = canvas.getContext('2d', { alpha: false });
+  const context = canvas.getContext('2d', { alpha: true });
   if (!context) throw new Error('OffscreenCanvas 2D rasterization is unavailable');
-  context.fillStyle = request.background;
-  context.fillRect(0, 0, width, height);
+  // Keep only ink in the cache. The GPU supplies the same live background as
+  // the enclosing file, so selecting a file never needs to rerasterize its text.
   context.scale(request.scale, request.scale);
   context.font = '15px Menlo, Consolas, "Liberation Mono", monospace';
   context.textBaseline = 'alphabetic';
@@ -187,21 +187,31 @@ export async function renderTile(request, signal, pages) {
   // nine world pixels per character, without stretching wider Unicode clusters.
   const asciiAdvance = context.measureText('M').width || CELL_WIDTH;
   let state = { mode: 'normal' };
-  for (let row = 0; row < page.sourceLines.length; row++) {
+  for (let row = 0; row < end; row++) {
     checkAbort(signal);
     const continued =
       row + 1 < page.sourceLines.length && page.lineMap[row + 1] === page.lineMap[row];
     const lexical = lexLine(page.sourceLines[row], { path: page.path || '', state, continued });
     state = lexical.state;
+    // Replay the preceding rows of the shared page for comment/string state;
+    // only rasterize the smaller source region requested for close reading.
+    if (row < first) continue;
     const { runs } = layoutLine(page.sourceLines[row], {
       column: request.column,
+      count: columns,
       origin: page.columnMap[row],
       tokens: lexical.tokens,
     });
     for (const run of runs) {
       const x = (run.column - request.column) * CELL_WIDTH;
-      const y = row * ROW_HEIGHT + 15;
+      const y = (row - first) * ROW_HEIGHT + 15;
       context.fillStyle = LEXICAL_COLORS[run.kind];
+      if (request.scale === 0.25) {
+        // Below readable size, preserve each token's colour and occupied width
+        // instead of rasterizing tiny, barely covered glyphs. Whitespace is skipped.
+        context.fillRect(x, y - 8, run.cells * CELL_WIDTH, 5);
+        continue;
+      }
       context.save();
       context.translate(x, y);
       if (run.ascii) context.scale(CELL_WIDTH / asciiAdvance, 1);
@@ -223,9 +233,11 @@ export async function renderTile(request, signal, pages) {
     height,
     bitmap: canvas.transferToImageBitmap(),
     revision: page.revision,
-    lineMap: page.lineMap,
-    columnMap: page.columnMap,
-    rows: page.sourceLines.length,
+    lineMap: page.lineMap.slice(first, end),
+    columnMap: page.columnMap.slice(first, end),
+    rows: Math.max(0, end - first),
+    tileRows,
+    columns,
     elapsed: performance.now() - started,
   };
 }

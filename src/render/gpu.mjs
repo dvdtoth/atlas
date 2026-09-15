@@ -6,6 +6,11 @@ diagnostic(off, derivative_uniformity);
 struct Camera {hi:vec4f,lo:vec4f,right:vec4f,up:vec4f,forward:vec4f,viewport:vec4f,planes:vec4f};
 @group(0) @binding(0) var<uniform> c:Camera;
 struct Shape {hi:vec4f,lo:vec4f,v:vec4f,tint:vec4f,info:vec4u,shape:vec4f};
+fn fileFill(tint:vec3f,selected:u32,flight:bool)->vec3f{
+ var fill=tint*0.105+vec3f(0.012,0.019,0.024);
+ if(selected>0u){fill+=vec3f(0.07,0.045,0.005);}
+ return fill*select(1.0,0.8,flight);
+}
 fn relative(g:Shape)->vec3f{return (g.hi.xyz-c.hi.xyz)+(g.lo.xyz-c.lo.xyz);}
 fn clip(p:vec3f)->vec4f {
  if(c.viewport.w<0.5){return vec4f(p.x*c.viewport.z*2.0/c.viewport.x,-p.y*c.viewport.z*2.0/c.viewport.y,0.5,1.0);}
@@ -51,15 +56,15 @@ fn inkAt(row:f32,cols:f32,total:f32,offset:u32)->f32{
 @fragment fn fs(in:Out)->@location(0) vec4f{
  let g=shapes[in.index];let selected=highlights[g.info.x];let d=max(fwidth(in.uv),vec2f(1e-9));let edge=min(min(in.uv.x/d.x,(1.0-in.uv.x)/d.x),min(in.uv.y/d.y,(1.0-in.uv.y)/d.y));
  if(c.viewport.w>0.5&&g.shape.y>0.5){if(edge>1.0){discard;}return vec4f(vec3f(.15,.34,.37)*mix(.25,1.0,smoothstep(1.0,50.0,1.0/max(d.x,d.y))),1.0);}
- var border=g.tint.rgb;var stroke=0.52;var fill=g.tint.rgb*0.105+vec3f(0.012,0.019,0.024);var ink=0.0;
- if(selected>0u){border=vec3f(1.0,0.77,0.22);stroke=select(1.6,2.5,selected==2u);fill+=vec3f(0.07,0.045,0.005);}
+ var border=g.tint.rgb;var stroke=0.52;var fill=fileFill(g.tint.rgb,selected,c.viewport.w>0.5);var ink=0.0;
+ if(selected>0u){border=vec3f(1.0,0.77,0.22);stroke=select(1.6,2.5,selected==2u);}
  if(c.viewport.w<0.5){
   let h=g.v.x;let pw=g.v.y;let panels=max(1u,g.info.w);let xy=in.uv*vec2f(g.hi.w,g.v.w);let panel=min(panels-1u,u32(max(0.0,floor(xy.x/(pw+2.0*h)))));
   let rows=max(1u,g.info.z);let q=rows/panels;let rem=rows%panels;let count=q+select(0u,1u,panel<rem);
   let row=(xy.y-select(4.0,2.0,panels==1u)*h)/h;let x=(xy.x-f32(panel)*(pw+2.0*h)-h)/(h*0.45);
   if(row>=0.0&&row<f32(count)&&x>=0.0&&x<g.v.z&&g.info.z>0u){ink=inkAt(row,x,f32(count),g.info.y+panel*16u);}
   let gap=abs(xy.x-(f32(panel)*(pw+2.0*h)));if(panel>0u&&gap<h*0.28){fill+=g.tint.rgb*0.12;}
- }else{let row=f32(g.info.z)+in.uv.y*f32(g.info.w);ink=inkAt(row,in.uv.x*g.v.w,g.shape.x,g.info.y);fill*=0.8;}
+ }else{let row=f32(g.info.z)+in.uv.y*f32(g.info.w);ink=inkAt(row,in.uv.x*g.v.w,g.shape.x,g.info.y);}
  let paper=vec3f(0.49,0.60,0.63)+g.tint.rgb*0.12;let colour=fill+paper*ink*0.82;if(selected==0u&&c.viewport.w<0.5){border*=mix(0.20,1.0,smoothstep(1.0,7.0,1.0/max(d.x,d.y)));}
  return vec4f(mix(colour,border,1.0-smoothstep(stroke,stroke+0.7,edge)),1.0);
 }`;
@@ -67,6 +72,7 @@ const textCode =
   cameraCode +
   `
 struct Tile {origin:vec4f,across:vec4f,down:vec4f,uv:vec4f,options:vec4f};
+@group(0) @binding(1) var<storage,read> highlights:array<u32>;
 @group(1) @binding(0) var<uniform> t:Tile;
 @group(1) @binding(1) var tex:texture_2d<f32>;
 @group(1) @binding(2) var samp:sampler;
@@ -77,7 +83,14 @@ struct Out {@builtin(position) position:vec4f,@location(0) uv:vec2f};
  if(c.viewport.w>0.5){out.position.z*=1.0003;}
  return out;
 }
-@fragment fn tfs(in:Out)->@location(0) vec4f{let v=textureSample(tex,samp,in.uv);return vec4f(v.rgb,v.a*t.options.x);}
+@fragment fn tfs(in:Out)->@location(0) vec4f{
+ let v=textureSample(tex,samp,in.uv);let color=u32(t.options.z);
+ let tint=vec3f(f32(color&255u),f32((color>>8u)&255u),f32((color>>16u)&255u))/255.0;
+ let fill=fileFill(tint,highlights[u32(t.options.y)],c.viewport.w>0.5);
+ // Premultiplied ink over an opaque live file background also hides coarse
+ // preview bars. Filtering the ink and its coverage together avoids dark halos.
+ return vec4f(v.rgb+fill*(1.0-v.a),t.options.x);
+}
 `;
 const selectionCode =
   cameraCode +
@@ -177,15 +190,19 @@ export class GPUView {
       entries: [
         {
           binding: 0,
-          visibility: GPUShaderStage.VERTEX,
-          buffer: { type: 'uniform', minBindingSize: 112 },
+          visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
+          buffer: { type: 'uniform', minBindingSize: 128 },
         },
+        { binding: 1, visibility: GPUShaderStage.FRAGMENT, buffer: { type: 'read-only-storage' } },
       ],
     });
     this.textLayout = tileLayout;
     this.textCamera = d.createBindGroup({
       layout: camLayout,
-      entries: [{ binding: 0, resource: { buffer: this.camera } }],
+      entries: [
+        { binding: 0, resource: { buffer: this.camera } },
+        { binding: 1, resource: { buffer: this.highlights } },
+      ],
     });
     this.tileBuffer = d.createBuffer({
       size: 256 * this.maxTextDraws,
@@ -375,7 +392,7 @@ struct MipVertex {@builtin(position) position:vec4f,@location(0) uv:vec2f};
         GPUTextureUsage.COPY_DST |
         GPUTextureUsage.RENDER_ATTACHMENT,
     });
-    d.queue.copyExternalImageToTexture({ source: bitmap }, { texture }, [
+    d.queue.copyExternalImageToTexture({ source: bitmap }, { texture, premultipliedAlpha: true }, [
       bitmap.width,
       bitmap.height,
     ]);
@@ -461,6 +478,8 @@ struct MipVertex {@builtin(position) position:vec4f,@location(0) uv:vec2f};
       encodedTiles.set(t.down, o + 8);
       encodedTiles.set(t.uv || [0, 0, 1, 1], o + 12);
       encodedTiles[o + 16] = t.opacity ?? 1;
+      encodedTiles[o + 17] = t.node;
+      encodedTiles[o + 18] = t.color & 0xffffff;
     }
     if (encodedTiles.length) d.queue.writeBuffer(this.tileBuffer, 0, encodedTiles);
     const selectionCount = Math.min(MAX_SELECTION_PLANES, selection.length),

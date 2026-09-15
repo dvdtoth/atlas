@@ -14,6 +14,36 @@ test('web keyboard flight uses half the previous normal and Shift speed at every
     }
 });
 
+test('small projects slow normal and boosted flight while large projects keep their current pace', () => {
+  assert.equal(typeof navigation.projectFlightScale, 'function');
+  const small = navigation.projectFlightScale(19549),
+    medium = navigation.projectFlightScale(500000),
+    large = navigation.projectFlightScale(63769550);
+  assert.ok(small >= 0.2 && small <= 0.3, 'Atlas should move about four times more slowly');
+  assert.ok(medium > small && medium < large);
+  assert.equal(large, 1);
+  for (const cruise of [0.05, 1, 100]) {
+    const normal = navigation.keyboardFlightSpeed(160, cruise, false, small),
+      boosted = navigation.keyboardFlightSpeed(160, cruise, true, small);
+    assert.ok(normal < navigation.keyboardFlightSpeed(160, cruise, false, large) / 3);
+    assert.equal(boosted, normal * 4);
+    assert.equal(navigation.keyboardFlightSpeed(160, cruise, true, large), 320 * cruise);
+  }
+});
+
+test('project flight scaling is bounded, continuous and safe for empty metadata', () => {
+  assert.equal(typeof navigation.projectFlightScale, 'function');
+  for (const lines of [undefined, NaN, Infinity, -1, 0, 1, 1000, 1e5, 1e6, 1e7, 1e12]) {
+    const factor = navigation.projectFlightScale(lines);
+    assert.ok(Number.isFinite(factor) && factor >= 0.15 && factor <= 1);
+  }
+  for (const lines of [10000, 100000, 1000000, 5000000])
+    assert.ok(
+      Math.abs(navigation.projectFlightScale(lines + 1) - navigation.projectFlightScale(lines)) <
+        0.001,
+    );
+});
+
 test('3D search centers the requested source row on both sides of every fold', () => {
   const n = { id: 9, index: 0, x: 2e5, y: 3e5, w: 220, h: 600, lines: 401, columns: 90, panels: 1 };
   for (const line of [0, 95, 96, 110, 191, 192, 300, 400]) {

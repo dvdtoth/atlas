@@ -17,6 +17,10 @@ Atlas runs entirely in your browser. There is no source-processing server, accou
 
 Distant code keeps its line-length silhouette; nearby code resolves into readable text. Colors group files by role—source, tests, build/config, documentation and data—with shades for file types. The source explorer provides selectable text. Right-click a file or source line to open its original GitHub location at the imported commit.
 
+Wheel zoom eases around the cursor and stops at a comfortable reading size. Syntax colours continue into lightweight token bars as you zoom out. Close-up text uses sharper, smaller tiles; resolution adapts to the visible area and the browser's text-memory budget. Reduced-motion preferences disable the wheel tween.
+
+Flight speed adapts to the repository's source volume: small projects move more gently, while large codebases retain their faster pace. Shift boost and the scroll-wheel speed adjustment apply on top of that automatic scaling. File selection uses one continuous background beneath both text and margins.
+
 | View   | Controls                                                                                        |
 | ------ | ----------------------------------------------------------------------------------------------- |
 | 2D     | Drag to pan; scroll to zoom; double-click to frame a file                                       |

@@ -136,7 +136,7 @@ export function collect2D(scene, cam, w, h) {
     traverse(scene, true, candidate, (n) => {
       if (n.kind) {
         const projectedLineHeight = surface(n).lineHeight * cam.scale;
-        if (n.lines > 0 && projectedLineHeight > 1)
+        if (n.lines > 0 && projectedLineHeight > 0.5)
           result.files.push({ ...n, projectedLineHeight });
       } else if (n.screenBounds.w > 12 && n.screenBounds.h > 12) result.folders.push(n);
     }),

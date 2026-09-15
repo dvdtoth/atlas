@@ -245,7 +245,7 @@ test('source maps with an incorrect row count are rejected before rasterization'
   await assert.rejects(cache.get({ id: 7, start: 0, display: false }), /Invalid source page/);
 });
 
-test('raster output fills every pixel opaquely while empty source rows draw no glyphs', async () => {
+test('raster leaves backgrounds transparent so cached text can share live file selection colours', async () => {
   const previous = globalThis.OffscreenCanvas;
   const draws = [],
     fills = [];
@@ -257,7 +257,7 @@ test('raster output fills every pixel opaquely while empty source rows draw no g
     }
     getContext(kind, options) {
       assert.equal(kind, '2d');
-      assert.equal(options.alpha, false);
+      assert.equal(options.alpha, true);
       return {
         fillRect(...bounds) {
           fills.push({ color: this.fillStyle, bounds });
@@ -295,12 +295,12 @@ test('raster output fills every pixel opaquely while empty source rows draw no g
         ),
     });
     const result = await worker.renderTile(
-      { key: 'raster', id: 7, start: 0, column: 0, scale: 2, display: true, background: '#102030' },
+      { key: 'raster', id: 7, start: 0, column: 0, scale: 2, display: true },
       new AbortController().signal,
       pages,
     );
     assert.deepEqual([result.width, result.height], [2304, 1280]);
-    assert.deepEqual(fills, [{ color: '#102030', bounds: [0, 0, 2304, 1280] }]);
+    assert.deepEqual(fills, []);
     assert.deepEqual(draws, ['a', 'b']);
     assert.equal(result.bitmap, bitmap);
     assert.equal(result.rows, 3);
@@ -314,7 +314,6 @@ test('raster output fills every pixel opaquely while empty source rows draw no g
         column: 0,
         scale: 0.25,
         display: false,
-        background: '#102030',
       },
       new AbortController().signal,
       pages,
@@ -322,6 +321,12 @@ test('raster output fills every pixel opaquely while empty source rows draw no g
     assert.deepEqual([distant.width, distant.height], [288, 160]);
     assert.deepEqual(distant.lineMap, result.lineMap);
     assert.equal(distant.rows, 3);
+    // Minified text retains occupied columns, colours and blank source rows.
+    assert.deepEqual(fills, [
+      { color: layout.LEXICAL_COLORS.plain, bounds: [0, 7, 9, 5] },
+      { color: layout.LEXICAL_COLORS.plain, bounds: [36, 7, 9, 5] },
+    ]);
+    assert.deepEqual(draws, ['a', 'b']);
   } finally {
     if (previous === undefined) delete globalThis.OffscreenCanvas;
     else globalThis.OffscreenCanvas = previous;
@@ -353,7 +358,6 @@ test('scheduler bounds concurrency and suppresses canceled queued and active til
     start: 0,
     column: 0,
     scale: 1,
-    background: '#102030',
   });
   scheduler.receive(tile('a'));
   scheduler.receive(tile('b'));
@@ -371,4 +375,81 @@ test('scheduler bounds concurrency and suppresses canceled queued and active til
     output.map((item) => item.key),
     ['b', 'd'],
   );
+});
+
+test('close-reading tiles crop source rows and columns while preserving page lexical context', async () => {
+  const previous = globalThis.OffscreenCanvas,
+    draws = [],
+    requests = [];
+  globalThis.OffscreenCanvas = class {
+    getContext() {
+      return {
+        fillRect() {},
+        scale() {},
+        save() {},
+        restore() {},
+        translate() {},
+        measureText() {
+          return { width: 9 };
+        },
+        fillText(text) {
+          draws.push({ text, color: this.fillStyle });
+        },
+      };
+    }
+    transferToImageBitmap() {
+      return { close() {} };
+    }
+  };
+  try {
+    const sourceLines = Array.from({ length: 32 }, (_, i) => ' '.repeat(64) + `row${i}`);
+    sourceLines[0] = '/* open block';
+    const pages = new worker.SourcePageCache({
+      fetch: async (url) => {
+        requests.push(new URL(url, 'https://atlas.test').searchParams.get('start'));
+        return new Response(
+          JSON.stringify({
+            id: 7,
+            path: 'a.js',
+            start: 0,
+            revision: 'r1',
+            sourceLines,
+            lineMap: sourceLines.map((_, i) => i),
+            columnMap: sourceLines.map(() => 0),
+          }),
+        );
+      },
+    });
+    const result = await worker.renderTile(
+      {
+        key: 'close',
+        id: 7,
+        start: 16,
+        column: 64,
+        scale: 4,
+        revision: 'r1',
+        display: true,
+      },
+      new AbortController().signal,
+      pages,
+    );
+    assert.deepEqual(requests, ['0']);
+    assert.deepEqual(
+      [result.width, result.height, result.columns, result.tileRows],
+      [2304, 1280, 64, 16],
+    );
+    assert.deepEqual(
+      result.lineMap,
+      Array.from({ length: 16 }, (_, i) => i + 16),
+    );
+    assert.equal(result.rows, 16);
+    assert.deepEqual(
+      draws.map((d) => d.text),
+      Array.from({ length: 16 }, (_, i) => `row${i + 16}`),
+    );
+    assert.ok(draws.every((d) => d.color === layout.LEXICAL_COLORS.comment));
+  } finally {
+    if (previous === undefined) delete globalThis.OffscreenCanvas;
+    else globalThis.OffscreenCanvas = previous;
+  }
 });

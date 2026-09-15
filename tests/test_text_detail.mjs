@@ -67,3 +67,55 @@ test('a cached lower-resolution tile stays available during refinement without c
   cache.set(base + '1', exact);
   assert.equal(detail.cachedTextTile(cache, base, 1, 'a')?.tile, exact);
 });
+
+test('close reading increases raster quality without increasing the maximum tile allocation', () => {
+  assert.equal(detail.rasterScale(72), 4);
+  assert.equal(detail.rasterScale(100000), 4);
+  assert.deepEqual(detail.tileShape(4), { columns: 64, rows: 16, width: 2304, height: 1280 });
+  assert.equal(detail.tileTextureBytes(4), detail.tileTextureBytes(2));
+});
+
+test('a smaller high-resolution tile cannot substitute for a larger source region', () => {
+  const base = '7:2d:0:0:',
+    cache = new Map([[base + '4', { revision: 'a' }]]);
+  assert.equal(detail.cachedTextTile(cache, base, 1, 'a'), null);
+});
+
+test('syntax minimaps remain visible below the old text cutoff and blend with resident bars', () => {
+  assert.ok(detail.mapTextOpacity(1.6) > 0.9);
+  assert.ok(detail.mapTextOpacity(0.8) > 0);
+  assert.equal(detail.mapTextOpacity(0.3), 0);
+});
+
+test('hover source mapping finds a containing close-reading tile, including the second half of a page', () => {
+  const cache = new Map([
+    [
+      'first',
+      {
+        id: 7,
+        display: true,
+        start: 0,
+        revision: 'a',
+        lineMap: Array.from({ length: 16 }, (_, i) => 100 + i),
+      },
+    ],
+    ['flight', { id: 7, display: false, start: 16, revision: 'a', lineMap: [0, 1] }],
+    ['old', { id: 7, display: true, start: 16, revision: 'old', lineMap: [3, 4] }],
+    ['second', { id: 7, display: true, start: 16, revision: 'a', lineMap: [115, 115, 116] }],
+  ]);
+  assert.equal(detail.cachedSourceLine(cache, 7, 17, 'a'), 115);
+  assert.equal(detail.cachedSourceLine(cache, 7, 18, 'a'), 116);
+  assert.equal(detail.cachedSourceLine(cache, 7, 19, 'a'), undefined);
+  assert.equal(detail.cachedSourceLine(cache, 8, 17, 'a'), undefined);
+});
+
+test('Retina close reading lowers raster quality before excluding visible source tiles', () => {
+  const regions = [{ start: 478, end: 523, col0: 57, col1: 210 }];
+  const quality = detail.mapRasterScale(42, regions, 144 * 1048576, 384);
+  assert.equal(quality, 2);
+  assert.ok(detail.mapRasterScale(72, regions, 96 * 1048576, 256) <= 2);
+  assert.equal(
+    detail.mapRasterScale(72, [{ start: 0, end: 16, col0: 0, col1: 64 }], 96 * 1048576, 256),
+    4,
+  );
+});

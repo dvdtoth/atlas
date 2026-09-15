@@ -1,10 +1,23 @@
 import { selectionPlanes2D, selectionPlanes3D } from '../render/source-selection.mjs';
 import { createSourceMenu } from './source-menu.mjs';
-import { flightTileDetail, tileTextureBytes, cachedTextTile } from '../render/text-detail.mjs';
+import {
+  flightTileDetail,
+  tileTextureBytes,
+  cachedTextTile,
+  cachedSourceLine,
+  mapRasterScale,
+  tileShape,
+  mapTextOpacity,
+} from '../render/text-detail.mjs';
+import { WheelZoom, wheelDelta, readingZoomLimit } from '../render/wheel-zoom.mjs';
 import { openSnapshot, localRequest, projectId } from './viewer-client.mjs';
 import { telemetry } from '../shared/telemetry.mjs';
 import { GPUView } from '../render/gpu.mjs';
-import { sourceFlightPose, keyboardFlightSpeed } from '../render/flight-navigation.mjs';
+import {
+  sourceFlightPose,
+  keyboardFlightSpeed,
+  projectFlightScale,
+} from '../render/flight-navigation.mjs';
 import {
   DEPTH,
   clamp,
@@ -36,7 +49,9 @@ const $ = (id) => document.getElementById(id),
   stage = $('stage');
 $('query').disabled = true;
 for (const button of document.querySelectorAll('[data-mode]')) button.disabled = true;
-const gpu = new GPUView(),
+const wheelZoom = new WheelZoom(),
+  reducedMotion = matchMedia('(prefers-reduced-motion: reduce)'),
+  gpu = new GPUView(),
   textWorker = new Worker(
     new URL('../render/text-worker.mjs?project=' + encodeURIComponent(projectId), import.meta.url),
     { type: 'module' },
@@ -71,6 +86,7 @@ let scene,
   velocity = [0, 0, 0],
   speed = 100,
   speedFactor = 1,
+  projectSpeed = 1,
   searchMode = 'all',
   searchResults = [],
   searchVersion = 0,
@@ -198,6 +214,7 @@ function mark() {
   lastCollect = 0;
 }
 function resize() {
+  wheelZoom.cancel();
   const r = stage.getBoundingClientRect();
   w = Math.max(1, r.width);
   h = Math.max(1, r.height);
@@ -214,6 +231,16 @@ function rootCamera() {
   return { x: x + rw / 2, y: y + rh / 2, scale: Math.min((w - 32) / rw, (h - 70) / rh) };
 }
 function animateMap(target, duration = 2000) {
+  wheelZoom.cancel();
+  const n = pick2D(scene, target.x, target.y);
+  if (n)
+    target = {
+      ...target,
+      scale: Math.min(
+        target.scale,
+        readingZoomLimit(surface(n).lineHeight, rootCamera().scale * 0.2),
+      ),
+    };
   animation = {
     mode: '2d',
     from: { ...mapCamera },
@@ -246,6 +273,7 @@ function fadeSnapshot() {
   );
 }
 function setMode(next) {
+  wheelZoom.cancel();
   budgetGeneration++;
   sourceMenu.hide();
   mode = next;
@@ -301,6 +329,7 @@ async function changeMode(next) {
   if (!ready || next === mode) return;
   remember();
   animation = null;
+  wheelZoom.cancel();
   fadeSnapshot();
   if (next === '3d') {
     const hit = pick2D(scene, mapCamera.x, mapCamera.y);
@@ -635,6 +664,7 @@ canvas.addEventListener('pointerdown', (e) => {
   canvas.setPointerCapture(e.pointerId);
   drag = { x: e.clientX, y: e.clientY, distance: 0 };
   animation = null;
+  wheelZoom.cancel();
 });
 canvas.addEventListener('pointermove', (e) => {
   const r = canvas.getBoundingClientRect();
@@ -728,6 +758,7 @@ canvas.addEventListener('contextmenu', (e) => {
   if (locked) document.exitPointerLock();
   navigationEpoch++;
   animation = null;
+  wheelZoom.cancel();
   keys.clear();
   velocity = [0, 0, 0];
   drag = null;
@@ -786,10 +817,21 @@ canvas.addEventListener(
         px = e.clientX - r.left,
         py = e.clientY - r.top,
         p = coordinates(px, py),
-        factor = Math.exp(clamp(-e.deltaY * (e.ctrlKey ? 0.009 : 0.0025), -0.65, 0.65));
-      mapCamera.scale = clamp(mapCamera.scale * factor, rootCamera().scale * 0.2, 1e10);
-      mapCamera.x = p.x - (px - w / 2) / mapCamera.scale;
-      mapCamera.y = p.y - (py - h / 2) / mapCamera.scale;
+        n = pick2D(scene, p.x, p.y) || pick2D(scene, mapCamera.x, mapCamera.y) || visible.files[0],
+        minimum = rootCamera().scale * 0.2,
+        maximum = n
+          ? readingZoomLimit(surface(n).lineHeight, minimum)
+          : Math.max(minimum, mapCamera.scale * 2);
+      wheelZoom.push(
+        mapCamera,
+        { x: px - w / 2, y: py - h / 2 },
+        wheelDelta(e.deltaY, e.deltaMode, h),
+        e.ctrlKey,
+        minimum,
+        maximum,
+        performance.now(),
+        reducedMotion.matches,
+      );
     } else {
       speedFactor = clamp(speedFactor * Math.exp(-e.deltaY * 0.0025), 0.05, 100);
     }
@@ -813,6 +855,7 @@ window.addEventListener('keydown', (e) => {
     keys.clear();
     if (document.pointerLockElement) document.exitPointerLock();
     animation = null;
+    wheelZoom.cancel();
     return;
   }
   if (!ready) return;
@@ -831,25 +874,12 @@ window.addEventListener('keydown', (e) => {
 });
 window.addEventListener('keyup', (e) => keys.delete(e.key.toLowerCase()));
 window.addEventListener('blur', () => {
+  wheelZoom.cancel();
   keys.clear();
   drag = null;
   velocity = [0, 0, 0];
 });
 
-function background(n) {
-  const c = [n.color & 255, (n.color >>> 8) & 255, (n.color >>> 16) & 255],
-    base = [0.012, 0.019, 0.024];
-  return (
-    '#' +
-    c
-      .map((v, i) =>
-        Math.round((v * 0.105 + base[i] * 255) * (mode === '3d' ? 0.8 : 1))
-          .toString(16)
-          .padStart(2, '0'),
-      )
-      .join('')
-  );
-}
 function trimTextures() {
   const limit = gpu.textBudget.current.cacheBytes,
     keep = new Set(tileDraws.map((t) => t.tile));
@@ -866,10 +896,11 @@ function requestTile(n, start, column, scale = 1) {
     base = `${n.id}:${mode}:${start}:${column}:`,
     key = base + scale,
     limit = mode === '3d' ? policy.workingBytes : Math.min(144 * 1048576, policy.workingBytes);
-  const cached = cachedTextTile(textures, base, scale, revisions.get(n.id));
+  const requestedBytes = tileTextureBytes(scale);
+  let cached = cachedTextTile(textures, base, scale, revisions.get(n.id));
+  // A large cached fallback must not prevent its cheaper replacement loading.
+  if (!wanted.has(key) && cached && wantedBytes + cached.tile.bytes > limit) cached = null;
   if (!wanted.has(key)) {
-    const requestedBytes =
-      mode === '3d' ? tileTextureBytes(scale) : 128 * 32 * 9 * 20 * 4 * scale * scale;
     // Refinement may temporarily draw a larger cached raster; budget its actual size.
     const bytes = Math.max(requestedBytes, cached?.tile.bytes || 0);
     if (wantedBytes + bytes > limit || wanted.size >= policy.maxDraws) return null;
@@ -893,7 +924,6 @@ function requestTile(n, start, column, scale = 1) {
       start,
       column,
       scale,
-      background: background(n),
       revision: revisions.get(n.id),
     };
     pending.set(key, performance.now());
@@ -913,7 +943,7 @@ textWorker.onmessage = ({ data }) => {
     return;
   }
   try {
-    const tile = gpu.uploadTile(data.bitmap, { mipmapped: !data.display });
+    const tile = gpu.uploadTile(data.bitmap, { mipmapped: true });
     data.bitmap.close();
     const old = textures.get(data.key);
     if (old) {
@@ -965,6 +995,7 @@ function collectTiles() {
   const policy = gpu.textBudget.current,
     draws = [];
   if (mode === '2d') {
+    const maxDraws = Math.min(384, policy.maxDraws);
     const low = coordinates(-20, -20),
       high = coordinates(w + 20, h + 20);
     const files = [...visible.files];
@@ -975,8 +1006,10 @@ function collectTiles() {
     }
     for (const n of files) {
       const s = surface(n),
-        pixels = s.lineHeight * mapCamera.scale;
-      if (pixels < 1.6) continue;
+        pixels = s.lineHeight * mapCamera.scale,
+        opacity = mapTextOpacity(pixels),
+        regions = [];
+      if (!opacity) continue;
       for (let p = 0; p < s.panels; p++) {
         const b = s.panel(p);
         if (b.x > high.x || b.x + b.w < low.x || b.y > high.y || b.y + b.h < low.y) continue;
@@ -992,25 +1025,41 @@ function collectTiles() {
           ),
           col0 = clamp(Math.floor((low.x - b.x) / (0.45 * s.lineHeight)), 0, n.columns),
           col1 = clamp(Math.ceil((high.x - b.x) / (0.45 * s.lineHeight)), 0, n.columns);
-        for (let row = Math.floor(start / 32) * 32; row < end && draws.length < 150; row += 32)
+        if (start < end && col0 < col1) regions.push({ b, start, end, col0, col1 });
+      }
+      const scale = mapRasterScale(
+          pixels * dpr,
+          regions,
+          Math.min(144 * 1048576, policy.workingBytes) - wantedBytes,
+          maxDraws - wanted.size,
+        ),
+        shape = tileShape(scale);
+      for (const { b, start, end, col0, col1 } of regions) {
+        for (
+          let row = Math.floor(start / shape.rows) * shape.rows;
+          row < end && draws.length < maxDraws;
+          row += shape.rows
+        )
           for (
-            let col = Math.floor(col0 / 128) * 128;
-            col < col1 && draws.length < 150;
-            col += 128
+            let col = Math.floor(col0 / shape.columns) * shape.columns;
+            col < col1 && draws.length < maxDraws;
+            col += shape.columns
           ) {
-            const tile = requestTile(n, row, col, pixels * dpr > 28 ? 2 : 1);
+            const tile = requestTile(n, row, col, scale);
             if (!tile) continue;
             const a = Math.max(row, b.start),
-              z = Math.min(row + tile.rows, b.start + b.count),
-              cw = Math.min(128, n.columns - col);
+              z = Math.min(row + shape.rows, row + tile.rows, b.start + b.count),
+              cw = Math.min(shape.columns, n.columns - col);
             if (z <= a || cw <= 0) continue;
             draws.push({
               tile,
+              node: n.index,
+              color: n.color,
               origin: [b.x + col * 0.45 * s.lineHeight, b.y + (a - b.start) * s.lineHeight, 0],
               across: [cw * 0.45 * s.lineHeight, 0, 0],
               down: [0, (z - a) * s.lineHeight, 0],
-              uv: [0, (a - row) / 32, cw / 128, (z - a) / 32],
-              opacity: clamp((pixels - 1.6) / 2, 0, 1),
+              uv: [0, (a - row) / tile.tileRows, cw / tile.columns, (z - a) / tile.tileRows],
+              opacity,
             });
           }
       }
@@ -1066,6 +1115,8 @@ function collectTiles() {
           if (final <= a) continue;
           draws.push({
             tile,
+            node: n.index,
+            color: n.color,
             origin,
             across,
             down: mul(down, (final - a) / (z - a)),
@@ -1179,10 +1230,9 @@ function tooltip() {
       n = pick2D(scene, p.x, p.y);
     if (n) {
       hit = sourceAt(n, p.x, p.y);
-      let line = hit?.line;
-      const key = line === undefined ? null : `${n.id}:2d:${Math.floor(line / 32) * 32}:`;
-      const cached = key ? [...textures.entries()].find(([k]) => k.startsWith(key))?.[1] : null;
-      if (cached && line !== undefined) line = cached.lineMap[line - cached.start];
+      const sourceLine = cachedSourceLine(textures, n.id, hit?.line, revisions.get(n.id)),
+        cached = sourceLine !== undefined,
+        line = sourceLine ?? hit?.line;
       text =
         path(n) + (line !== undefined ? ` · ${cached ? 'line' : 'display row'} ${line + 1}` : '');
       if (cached) {
@@ -1225,7 +1275,10 @@ function updateFlight(dt) {
     ['q', [0, -1, 0]],
   ])
     if (keys.has(key)) direction = add(direction, vector);
-  const target = mul(norm(direction), keyboardFlightSpeed(speed, speedFactor, keys.has('shift'))),
+  const target = mul(
+      norm(direction),
+      keyboardFlightSpeed(speed, speedFactor, keys.has('shift'), projectSpeed),
+    ),
     blend = 1 - Math.exp(-dt * 10);
   velocity = keys.has('x') ? [0, 0, 0] : velocity.map((v, i) => mix(v, target[i], blend));
   if (length(velocity) > speed * 0.0001) {
@@ -1272,7 +1325,11 @@ function frame(now) {
   const start = performance.now(),
     dt = clamp((now - lastFrame) / 1000, 0, 0.05);
   lastFrame = now;
-  if (animation) {
+  if (mode === '2d' && wheelZoom.active) {
+    mapCamera = wheelZoom.sample(now);
+    dirty = true;
+    if (!wheelZoom.active) lastCollect = 0;
+  } else if (animation) {
     const t = clamp((now - animation.start) / animation.duration, 0, 1);
     if (animation.mode === '2d')
       mapCamera = travel(animation.from, animation.to, t, Math.min(w, h) * 0.7);
@@ -1338,6 +1395,7 @@ async function boot() {
   resize();
   const snapshot = await openSnapshot();
   manifest = snapshot.manifest;
+  projectSpeed = projectFlightScale(manifest.stats.lines);
   if (manifest.previewSamples !== 16)
     throw Error('Unsupported source preview version; import this repository again.');
   $('repo-label').textContent = manifest.sourceRepo || 'Repository';
