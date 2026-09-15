@@ -1,4 +1,7 @@
+import { documentMetadata } from './client-index.mjs';
+
 const DB_NAME = 'atlas-client-v1';
+const projectRange = (id) => IDBKeyRange.bound([id, 0], [id, Number.MAX_SAFE_INTEGER]);
 function request(req) {
   return new Promise((resolve, reject) => {
     req.onsuccess = () => resolve(req.result);
@@ -18,13 +21,17 @@ export class ClientStore {
       throw Error(
         'This browser does not provide IndexedDB storage. Open Atlas in a regular browser window.',
       );
-    const r = indexedDB.open(name, 1);
-    r.onupgradeneeded = () => {
+    const r = indexedDB.open(name, 2);
+    r.onupgradeneeded = (event) => {
       const db = r.result;
-      db.createObjectStore('projects', { keyPath: 'id' });
-      db.createObjectStore('documents', { keyPath: ['project', 'id'] });
-      db.createObjectStore('snapshots');
-      db.createObjectStore('indexes');
+      if (event.oldVersion < 1) {
+        db.createObjectStore('projects', { keyPath: 'id' });
+        db.createObjectStore('documents', { keyPath: ['project', 'id'] });
+        db.createObjectStore('snapshots');
+        db.createObjectStore('indexes');
+      }
+      // Temporary line profiles keep preview generation independent of source reads.
+      if (event.oldVersion < 2) db.createObjectStore('profiles', { keyPath: ['project', 'id'] });
     };
     const db = await request(r);
     db.onversionchange = () => db.close();
@@ -75,14 +82,25 @@ export class ClientStore {
     await done;
   }
   async putDocument(project, doc) {
-    await this.write('documents', { project, id: doc.id, value: doc });
+    await this.putDocuments(project, [doc]);
   }
   async putDocuments(project, docs) {
     if (!docs.length) return;
-    const tx = this.db.transaction('documents', 'readwrite', { durability: 'relaxed' }),
+    const tx = this.db.transaction(['documents', 'profiles'], 'readwrite', {
+        durability: 'relaxed',
+      }),
       done = completed(tx);
     try {
-      for (const doc of docs) tx.objectStore('documents').put({ project, id: doc.id, value: doc });
+      for (const doc of docs) {
+        const { rawProfile, displayProfile, ...source } = doc;
+        tx.objectStore('documents').put({ project, id: doc.id, value: source });
+        if (rawProfile)
+          tx.objectStore('profiles').put({
+            project,
+            id: doc.id,
+            value: { ...documentMetadata(doc), rawProfile, displayProfile },
+          });
+      }
     } catch (error) {
       tx.abort();
       await done.catch(() => {});
@@ -92,6 +110,9 @@ export class ClientStore {
   }
   async document(project, id) {
     return (await this.read('documents', [project, id]))?.value;
+  }
+  async profile(project, id) {
+    return (await this.read('profiles', [project, id]))?.value;
   }
   async snapshot(id) {
     const p = await this.project(id);
@@ -105,7 +126,7 @@ export class ClientStore {
     return this.read('indexes', id);
   }
   async publish(id, snapshot, metas, symbols, coverage = {}) {
-    const tx = this.db.transaction(['projects', 'snapshots', 'indexes'], 'readwrite'),
+    const tx = this.db.transaction(['projects', 'snapshots', 'indexes', 'profiles'], 'readwrite'),
       done = completed(tx),
       store = tx.objectStore('projects');
     const p = await request(store.get(id));
@@ -116,6 +137,7 @@ export class ClientStore {
     }
     tx.objectStore('snapshots').put(snapshot, id);
     tx.objectStore('indexes').put({ metas, symbols, coverage }, id);
+    tx.objectStore('profiles').delete(projectRange(id));
     store.put({
       ...p,
       state: 'ready',
@@ -126,16 +148,21 @@ export class ClientStore {
     await done;
   }
   async clearDocuments(id) {
-    const tx = this.db.transaction('documents', 'readwrite'),
+    const tx = this.db.transaction(['documents', 'profiles'], 'readwrite'),
       done = completed(tx);
-    tx.objectStore('documents').delete(IDBKeyRange.bound([id, 0], [id, Number.MAX_SAFE_INTEGER]));
+    tx.objectStore('documents').delete(projectRange(id));
+    tx.objectStore('profiles').delete(projectRange(id));
     await done;
   }
   async deleteProject(id) {
-    const tx = this.db.transaction(['projects', 'documents', 'snapshots', 'indexes'], 'readwrite'),
+    const tx = this.db.transaction(
+        ['projects', 'documents', 'snapshots', 'indexes', 'profiles'],
+        'readwrite',
+      ),
       done = completed(tx);
     tx.objectStore('projects').delete(id);
-    tx.objectStore('documents').delete(IDBKeyRange.bound([id, 0], [id, Number.MAX_SAFE_INTEGER]));
+    tx.objectStore('documents').delete(projectRange(id));
+    tx.objectStore('profiles').delete(projectRange(id));
     tx.objectStore('snapshots').delete(id);
     tx.objectStore('indexes').delete(id);
     await done;

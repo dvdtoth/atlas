@@ -626,8 +626,8 @@ function sampleProfile(profile, lines, panels, output, offset) {
   return offset;
 }
 
-/** Build a ready snapshot from compact metadata, loading one analyzed source at a time. */
-export async function buildSnapshot(metas, repo, readDocument, onProgress = () => {}) {
+/** Build a ready snapshot from compact metadata, loading one source-free profile at a time. */
+export async function buildSnapshot(metas, repo, readProfile, onProgress = () => {}) {
   if (!Array.isArray(metas) || !metas.length)
     throw new Error('No supported documents were found in this empty repository');
   let maxId = 0;
@@ -742,7 +742,7 @@ export async function buildSnapshot(metas, repo, readDocument, onProgress = () =
     let displayOffset = 0,
       rawOffset = 0;
     if (n.kind) {
-      const doc = await readDocument(n.id);
+      const doc = await readProfile(n.id);
       if (!doc) throw new Error(`Missing stored document ${n.path}`);
       if (doc.id !== n.id || doc.path !== n.path || doc.revision !== n.revision)
         throw new Error(`Document revision changed while building ${n.path}`);

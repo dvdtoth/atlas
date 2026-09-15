@@ -20,8 +20,8 @@ Atlas is a static application built from native JavaScript modules, Web Workers,
 
 1. An adapter enumerates supported source files. GitHub metadata resolves to one immutable commit; ZIP and folder adapters validate local paths and file limits.
 2. Read-ahead overlaps IO, decompression and hashing. A bounded pool of indexing workers measures source and extracts syntax symbols.
-3. Results are consumed in source order so worker completion order cannot change document IDs or retained symbol selection. IndexedDB writes are batched.
-4. The layout pass packs the folder hierarchy into a rectangular map and builds small source previews. A ready snapshot is published only after its source, map and index are complete.
+3. Results are consumed in source order so worker completion order cannot change document IDs or retained symbol selection. IndexedDB writes are batched. Source and temporary line-length profiles are stored separately in the same transaction.
+4. The layout pass packs the folder hierarchy into a rectangular map and builds small source previews by reading profiles only, without rereading source text or syntax records. A ready snapshot is published only after its source, map and index are complete; publishing also removes the temporary profiles. Existing saved maps remain compatible.
 5. A geometry worker prepares resident GPU buffers. The viewer receives geometry and previews; source pages are requested from local storage as needed.
 
 Cancellation terminates the active workers and removes partial source. An interrupted tab can leave an unfinished library entry, which can be removed. Storage is a rebuildable cache, subject to browser quota and eviction.

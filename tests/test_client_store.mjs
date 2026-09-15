@@ -63,7 +63,7 @@ test('document batches persist together and clone source before callers release 
     const saving = store.putDocuments('batch', [first, second]);
     first.rawProfile[0] = 99;
     await saving;
-    assert.equal((await store.document('batch', 1)).rawProfile[0], 42);
+    assert.equal((await store.profile('batch', 1)).rawProfile[0], 42);
     assert.equal((await store.document('batch', 2)).text, 'two');
   } finally {
     store.close();

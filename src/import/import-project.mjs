@@ -144,7 +144,7 @@ export async function importProject(
       repo,
       async (id) => {
         check();
-        return store.document(projectId, id);
+        return store.profile(projectId, id);
       },
       (p) => onProgress({ ...p, stage: p.phase || 'layout' }),
     );
