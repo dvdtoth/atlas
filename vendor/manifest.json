@@ -1,0 +1,104 @@
+{
+  "packages": {
+    "web-tree-sitter": "0.25.10",
+    "tree-sitter-wasms": "0.1.13",
+    "@zip.js/zip.js": "2.15.0"
+  },
+  "assets": [
+    {
+      "file": "zip.mjs",
+      "bytes": 202531,
+      "sha256": "ab836db4624bf6e937d5decc65570e2f0ed980e864f3ff523629c887f20ed8d8"
+    },
+    {
+      "file": "LICENSE.zip.js",
+      "bytes": 1501,
+      "sha256": "1b7ebc8d7889ed25491484ab2b102370742ca6c0b26650a0c62cc2269b579b84"
+    },
+    {
+      "file": "tree-sitter.js",
+      "bytes": 150999,
+      "sha256": "d4fc466df6358055253bc4cdaab23cdf84fe00741fa5a4ff56506c06c533da42"
+    },
+    {
+      "file": "tree-sitter.wasm",
+      "bytes": 205488,
+      "sha256": "f38dcc4b43b818f9a0785bc1c6d5611a75ac4cdd428ff3f02757c34ca4e46d7f"
+    },
+    {
+      "file": "LICENSE.web-tree-sitter",
+      "bytes": 1085,
+      "sha256": "5f9cf9fb6acb1972b35ae29119ce563bb60ec097656bc4b69b9bac2d04c7a147"
+    },
+    {
+      "file": "LICENSE.tree-sitter-wasms",
+      "bytes": 1211,
+      "sha256": "6b0382b16279f26ff69014300541967a356a666eb0b91b422f6862f6b7dad17e"
+    },
+    {
+      "file": "tree-sitter-c.wasm",
+      "bytes": 792959,
+      "sha256": "056b25072382f72deee2c64ec238ffc4bb8cf42844ef21502c0e70f03a8a0d66"
+    },
+    {
+      "file": "tree-sitter-cpp.wasm",
+      "bytes": 4662978,
+      "sha256": "f6afdf53bfd6de76557bb7edb624a3a3869e14d9a83b78433f93617ecee42527"
+    },
+    {
+      "file": "tree-sitter-rust.wasm",
+      "bytes": 818756,
+      "sha256": "4409921a70d0aa5bec7d1d7ce809a557a8ee1cf6ace901e3ac6a76e62cfea903"
+    },
+    {
+      "file": "tree-sitter-javascript.wasm",
+      "bytes": 647334,
+      "sha256": "63812b9e275d26851264734868d27a1656bd44a2ef6eb3e85e6b03728c595ab5"
+    },
+    {
+      "file": "tree-sitter-typescript.wasm",
+      "bytes": 2342690,
+      "sha256": "8515404dceed38e1ed86aa34b09fcf3379fff1b4ff9dd3967bcd6d1eb5ac3d8f"
+    },
+    {
+      "file": "tree-sitter-tsx.wasm",
+      "bytes": 2411272,
+      "sha256": "6aa3b2c70e76f5d48eafef1093e9c4de383e13f2fdde2f4e9b98a378f6a8f1b6"
+    },
+    {
+      "file": "tree-sitter-python.wasm",
+      "bytes": 476105,
+      "sha256": "9056d0fb0c337810d019fae350e8167786119da98f0f282aceae7ab89ee8253b"
+    },
+    {
+      "file": "LICENSE.tree-sitter-c",
+      "bytes": 1080,
+      "sha256": "2e0110e07abef7c2548b26ec9d6969775617ca539a0dc8dbeeb14d6452c711d1"
+    },
+    {
+      "file": "LICENSE.tree-sitter-cpp",
+      "bytes": 1080,
+      "sha256": "2e0110e07abef7c2548b26ec9d6969775617ca539a0dc8dbeeb14d6452c711d1"
+    },
+    {
+      "file": "LICENSE.tree-sitter-rust",
+      "bytes": 1080,
+      "sha256": "31d5b6f4243d5c7c6e1c4ebbbb9f6407bd1457a08bcc4f706521710341acba36"
+    },
+    {
+      "file": "LICENSE.tree-sitter-javascript",
+      "bytes": 1080,
+      "sha256": "2e0110e07abef7c2548b26ec9d6969775617ca539a0dc8dbeeb14d6452c711d1"
+    },
+    {
+      "file": "LICENSE.tree-sitter-typescript",
+      "bytes": 1073,
+      "sha256": "c873307dab492c1ea6e6d26bf43d0ef9aaac09447d25ff017b20e590f9c6ebe2"
+    },
+    {
+      "file": "LICENSE.tree-sitter-python",
+      "bytes": 1080,
+      "sha256": "d724405ce238a22c0d35769c5a36b386ad5958192efe8bbb304fb2896254575f"
+    }
+  ]
+}

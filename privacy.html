@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' https://api.github.com https://raw.githubusercontent.com https://cloud.umami.is; object-src 'none'; base-uri 'self'"
+    />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="referrer" content="no-referrer" />
+    <title>Atlas · Privacy & data</title>
+    <link rel="stylesheet" href="styles/home.css" />
+  </head>
+  <body>
+    <header><a class="brand" href="./">ATLAS</a><a href="./">Back to library</a></header>
+    <main>
+      <section class="intro">
+        <div class="eyebrow">PRIVACY & DATA</div>
+        <h1>Your source stays<br />on your device.</h1>
+        <p>
+          Atlas is a static web application. Your browser downloads public repository metadata from
+          api.github.com and source files from raw.githubusercontent.com. GitHub receives those
+          requests, including your IP address. The site host serves application files and may keep
+          its normal access logs.
+        </p>
+        <p>
+          Indexing, parsing, layout, rendering, and searches run on your device. Source files,
+          filenames, symbols, and maps are stored in IndexedDB under this site's origin. Local ZIP
+          archives and folder content are never uploaded. ZIP entries are unpacked and indexed in a
+          browser worker; repository scripts are never executed. Remove a repository from the
+          library to delete its snapshot and cached source. Clearing this site's browser data also
+          removes everything.
+        </p>
+        <h2>Optional usage telemetry</h2>
+        <p>
+          Analytics are disabled unless the site operator configures an Umami endpoint and you
+          enable the checkbox in the library. Browser Do Not Track and Global Privacy Control
+          override that choice. You can withdraw it at any time.
+        </p>
+        <p>
+          Enabled events contain only allowlisted actions, coarse file/download counts, rounded
+          timings, search result counts, and fixed modes such as “2d” or “symbols”. Atlas sends no
+          repository identity, file paths, code, symbol names, query text, page query strings,
+          referrer, error messages, persistent tracking ID, or session replay. It does not load an
+          analytics script or allow automatic page capture.
+        </p>
+        <p>
+          The analytics endpoint necessarily sees your IP address and normal HTTP metadata when it
+          receives a request. Its retention and processing depend on the operator's Umami
+          configuration. The static host and GitHub have their own data policies.
+        </p>
+        <h2>Snapshots and coverage</h2>
+        <p>
+          GitHub imports are pinned to one commit, without submodules or Git LFS objects. Binary,
+          unsupported encoding, oversize files, and common build output directories are counted as
+          skipped. Text is retained as its original UTF-8 content; wrapping is a view only. Symbol
+          extraction uses Tree-sitter for supported languages; it is a syntax index, not
+          compiler-level reference resolution. Other files remain searchable by filename and text.
+        </p>
+      </section>
+    </main>
+  </body>
+</html>

@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' https://api.github.com https://raw.githubusercontent.com https://cloud.umami.is; object-src 'none'; base-uri 'self'"
+    />
+    <meta name="referrer" content="no-referrer" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Atlas · Code landscape</title>
+    <link rel="stylesheet" href="styles/style.css" />
+  </head>
+  <body>
+    <header>
+      <a class="brand" href="./">ATLAS<span id="repo-label">LOCAL CODE LANDSCAPE</span></a>
+      <nav>
+        <button id="back" title="Previous view">←</button
+        ><button id="map" class="active">2D Map</button><button id="flight">3D Flight</button
+        ><button id="fit">Overview</button
+        ><button id="sidebar-toggle" aria-pressed="true">Search</button>
+      </nav>
+      <span class="snapshot"><span id="snapshot-label">LOCAL SNAPSHOT</span> <i></i></span>
+    </header>
+    <main>
+      <section id="stage" aria-label="Interactive code map">
+        <canvas
+          id="gpu"
+          tabindex="0"
+          aria-label="Code map. Drag to pan. Scroll to zoom. In 3D, drag to look and use WASD to fly."
+        ></canvas
+        ><canvas id="overlay"></canvas><canvas id="transition"></canvas>
+        <div id="tip" role="tooltip"></div>
+        <div id="reticle">+</div>
+        <div id="loading">
+          <div class="orb"></div>
+          <h1>Opening the code landscape</h1>
+          <p id="load-message">Reading the source map from your browser…</p>
+          <small>WebGPU rendering · source stored on this device</small>
+        </div>
+        <div id="error" hidden></div>
+        <div id="help">
+          <span id="controls">DRAG to pan · SCROLL to zoom · DOUBLE CLICK to frame a file</span
+          ><button id="read" hidden>Read here [F]</button
+          ><button id="lock" hidden>Capture mouse</button>
+        </div>
+        <footer>
+          <span id="stats">Preparing scene…</span><span id="performance">WebGPU</span>
+        </footer>
+      </section>
+      <aside>
+        <div class="searchbox">
+          <label for="query">EXPLORE THE SOURCE</label>
+          <div class="inputwrap">
+            <span>⌕</span
+            ><input
+              id="query"
+              placeholder="Function, filename, or text…"
+              autocomplete="off"
+              spellcheck="false"
+              type="search"
+              aria-label="Search codebase"
+            /><kbd>⌘ K</kbd>
+          </div>
+          <div class="tabs" role="tablist">
+            <button data-mode="all" class="active" role="tab" aria-selected="true">All</button
+            ><button data-mode="files" role="tab" aria-selected="false">Files</button
+            ><button data-mode="symbols" role="tab" aria-selected="false">Symbols</button
+            ><button data-mode="text" role="tab" aria-selected="false">Text</button>
+          </div>
+          <div
+            id="coverage-status"
+            title="Syntax symbols use supported Tree-sitter grammars. Every indexed text file remains available to filename and text search."
+          ></div>
+          <div id="search-status">Search the source stored on this device.</div>
+        </div>
+        <div id="results" role="list" aria-label="Search results">
+          <div class="empty">
+            <div>ONE REPOSITORY.<br />A DIFFERENT PERSPECTIVE.</div>
+            <p>Explore the map or search for a name.<br />Select a result to fly to its source.</p>
+            <div class="legend">
+              <span class="source">Source</span><span class="tests">Tests</span
+              ><span class="build">Build / config</span><span class="docs">Docs</span
+              ><span class="data">Data / assets</span>
+            </div>
+          </div>
+        </div>
+        <section id="inspector" hidden>
+          <div class="inspecthead">
+            <span>SOURCE</span
+            ><button id="close-inspector" aria-label="Close source preview">×</button>
+          </div>
+          <div id="source-path"></div>
+          <div id="source-meta"></div>
+          <div class="source-actions">
+            <button id="previous-lines">↑ Earlier</button><button id="locate">Locate on map</button
+            ><button id="next-lines">Later ↓</button>
+          </div>
+          <pre id="source-code" aria-label="Source preview"></pre>
+        </section>
+        <div class="asidefoot">WebGPU · snapshot exploration <span>CLIENT SIDE</span></div>
+      </aside>
+    </main>
+    <script type="module" src="src/ui/app.mjs"></script>
+  </body>
+</html>

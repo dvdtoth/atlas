@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' https://api.github.com https://raw.githubusercontent.com https://cloud.umami.is; object-src 'none'; base-uri 'self'"
+    />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="referrer" content="no-referrer" />
+    <meta name="theme-color" content="#0a1118" />
+    <title>Atlas · Explore a codebase</title>
+    <link rel="stylesheet" href="styles/home.css" />
+  </head>
+  <body>
+    <header>
+      <a class="brand" href="./">ATLAS<span>A SPATIAL CODE EXPLORER</span></a
+      ><span class="local-badge"><i></i> RUNS ON YOUR DEVICE</span>
+    </header>
+    <main>
+      <section class="intro">
+        <div class="eyebrow">THE WHOLE REPOSITORY. ONE LANDSCAPE.</div>
+        <h1>A spatial code<br />browsing experiment</h1>
+        <p>
+          See the structure. Follow a function. Fly into the details.<br />Turn a public GitHub
+          repository into a searchable 2D and 3D map, right here in your browser.
+        </p>
+        <div class="features">
+          <span>01 / Fetch from GitHub</span><span>02 / Build locally</span
+          ><span>03 / Explore freely</span>
+        </div>
+      </section>
+      <section class="workspace">
+        <div class="import-card">
+          <div class="card-heading">
+            <h2>Open a repository</h2>
+            <span>GITHUB · ZIP · FOLDER</span>
+          </div>
+          <form id="import-form">
+            <label for="repository">Repository URL or owner / repository</label>
+            <div class="repo-input">
+              <span aria-hidden="true">↳</span
+              ><input
+                id="repository"
+                name="repository"
+                type="text"
+                placeholder="https://github.com/owner/repository"
+                value="dvdtoth/atlas"
+                required
+                autocomplete="off"
+                spellcheck="false"
+                maxlength="300"
+              /><button id="import-button" type="submit">Build map <span>↗</span></button>
+            </div>
+
+            <details>
+              <summary>Branch or commit</summary>
+              <label for="ref">Optional ref</label
+              ><input
+                id="ref"
+                placeholder="Default branch"
+                maxlength="200"
+                autocomplete="off"
+                spellcheck="false"
+              />
+              <p>
+                Atlas pins the import to one commit. Reopen the saved map or import again to check
+                for a newer revision.
+              </p>
+            </details>
+          </form>
+          <div id="zip-drop" class="zip-drop" role="group" aria-label="Import a repository ZIP">
+            <div>
+              <strong>Drop a repository ZIP here</strong>
+              <p>Unpack locally. Build the map. Start exploring.</p>
+            </div>
+            <button id="choose-zip" type="button">
+              Choose ZIP <span aria-hidden="true">↗</span>
+            </button>
+            <input
+              type="file"
+              id="zip-input"
+              accept=".zip,application/zip,application/x-zip-compressed"
+              hidden
+            />
+          </div>
+          <div class="alternative">
+            <span>Already have the code?</span
+            ><label class="folder-button" for="folder-input"
+              >Choose a local folder <span>↗</span></label
+            ><input type="file" id="folder-input" webkitdirectory multiple hidden />
+          </div>
+          <div class="archive-alternative">
+            <a
+              id="download-archive"
+              href="https://github.com/dvdtoth/atlas/archive/HEAD.zip"
+              target="_blank"
+              rel="noopener noreferrer"
+              >Download ZIP from GitHub ↗</a
+            >
+            <p>
+              Hit GitHub’s API limit? Download the ZIP, then drop it here or choose it above. No
+              need to extract it first. This route needs no GitHub API requests or login.
+            </p>
+          </div>
+          <p class="scope">
+            Text files are indexed locally. Binary files, submodules, symlinks, and common build
+            outputs are skipped. Imports currently allow up to 5 GiB of source and 16 MiB per file.
+            ZIP archives can be up to 2 GiB compressed.
+          </p>
+          <div id="compatibility" class="notice" hidden></div>
+          <div id="import-error" class="notice error" role="alert" hidden></div>
+          <div id="progress-panel" hidden aria-live="polite">
+            <div class="progress-heading">
+              <strong id="progress-title">Preparing your repository</strong
+              ><button id="cancel-import" type="button">Cancel</button>
+            </div>
+            <div
+              id="import-stages"
+              class="import-stages"
+              data-stage="cache"
+              aria-label="Import stages"
+            >
+              <span id="stage-cache" aria-current="step">01 Cache</span
+              ><span aria-hidden="true">→</span><span id="stage-build">02 Build</span>
+            </div>
+            <progress id="progress"></progress>
+            <p id="progress-message">Resolving the current commit…</p>
+            <div id="progress-detail"></div>
+            <div class="import-timing" aria-live="off">
+              <span>Elapsed <strong id="import-elapsed">0s</strong></span
+              ><span
+                title="Approximate time remaining in the current stage. Source indexing is followed by map building."
+                >Stage ETA <strong id="import-eta">Estimating…</strong></span
+              >
+            </div>
+            <p class="scope">
+              Keep this tab open while Atlas builds the map. Source stays in this browser.
+            </p>
+          </div>
+        </div>
+        <div class="map-art" aria-hidden="true">
+          <div class="art-top">SOURCE / STRUCTURE / SPACE <span>2D ↔ 3D</span></div>
+          <svg
+            id="map-illustration"
+            viewBox="0 0 480 390"
+            preserveAspectRatio="xMidYMid meet"
+          ></svg>
+          <div class="art-bottom">
+            <span class="dot blue"></span>Source<span class="dot purple"></span>Tests<span
+              class="dot gold"
+            ></span
+            >Config<span class="dot green"></span>Docs
+          </div>
+        </div>
+      </section>
+      <section class="library">
+        <div class="library-heading">
+          <h2>Your local library</h2>
+          <span id="storage-summary">SAVED IN THIS BROWSER</span>
+        </div>
+        <div id="projects">
+          <p class="empty">
+            Maps you build appear here. Reopen a saved snapshot without downloading the repository
+            again.
+          </p>
+        </div>
+      </section>
+      <footer>
+        <div>
+          <strong>Private by design.</strong> Code and search queries stay on your device. GitHub
+          serves the files directly to you.
+        </div>
+        <label class="analytics"
+          ><input id="analytics-consent" type="checkbox" /> Share usage &amp; performance
+          counters</label
+        >
+        <p id="analytics-note">Optional analytics are not configured on this installation.</p>
+        <a href="privacy.html">Privacy &amp; data</a>
+      </footer>
+    </main>
+    <script type="module" src="src/ui/home.mjs"></script>
+  </body>
+</html>

@@ -1,0 +1,31 @@
+{
+  "name": "atlas",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/test_*.mjs",
+    "vendor": "node scripts/vendor-parsers.mjs",
+    "build": "node scripts/build.mjs",
+    "start": "npm run build && node scripts/serve.mjs",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "@zip.js/zip.js": "2.15.0",
+    "fake-indexeddb": "6.2.4",
+    "prettier": "3.9.6",
+    "tree-sitter-wasms": "0.1.13",
+    "web-tree-sitter": "0.25.10"
+  },
+  "description": "A spatial code browsing experiment. Explore repositories in 2D and 3D, entirely in your browser.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dvdtoth/atlas.git"
+  },
+  "homepage": "https://dvdtoth.github.io/atlas/",
+  "engines": {
+    "node": ">=22"
+  }
+}
