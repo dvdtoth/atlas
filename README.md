@@ -58,6 +58,8 @@ See [architecture and resource budgets](docs/architecture.md) for details.
 
 Source, file paths and search queries stay on your device. Public imports contact GitHub directly; the static host serves application assets. Local files are never uploaded. Optional Umami analytics require configuration and visitor consent. A separate opt-in can share the names of repositories imported from public GitHub. ZIP and folder names are always excluded. No external analytics script, session replay or page-content capture is loaded. See the [telemetry setup and event reference](docs/telemetry.md).
 
+Analytics are unconfigured in source, forks and local builds. Only the official GitHub Pages build includes its hosted configuration, restricted to `https://dvdtoth.github.io/atlas/`. Other deployments must supply their own analytics configuration.
+
 See the [privacy page](https://dvdtoth.github.io/atlas/privacy.html) and [telemetry configuration](docs/telemetry.md).
 
 ## Inspiration

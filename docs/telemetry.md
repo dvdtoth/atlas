@@ -2,6 +2,8 @@
 
 Atlas sends nothing until a visitor opts in. Usage analytics and public repository names have separate controls in the library. Disabling usage analytics also clears the repository-sharing choice. Do Not Track and Global Privacy Control override both choices, including across tabs.
 
+The source configuration is empty: local builds, forks and ordinary static deployments have no analytics destination. Only the official `dvdtoth/atlas` main-branch GitHub Pages workflow injects its public Website ID into `dist/`. That generated configuration also checks the browser's exact HTTPS origin and `/atlas/` path, so copying the hosted files to another deployment does not send events to the official site's account. Other operators must explicitly configure their own Umami website below.
+
 ## Connect Umami Cloud
 
 1. In Umami, open **Websites → Add website**.
