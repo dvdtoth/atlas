@@ -54,6 +54,8 @@ Deploy the contents of `dist/` to an HTTPS static host. Relative module, worker 
 
 See [architecture and resource budgets](docs/architecture.md) for details.
 
+Safari ZIP imports use an isolated portable stream pipeline with WASM decompression to avoid excessive native stream retention on large archives. Chromium retains native decompression. Both paths preserve the same source, validation, indexing and visualization features.
+
 ## Privacy
 
 Source, file paths and search queries stay on your device. Public imports contact GitHub directly; the static host serves application assets. Local files are never uploaded. On the official site, Umami usage analytics and public GitHub repository-name sharing start enabled unless the browser signals Do Not Track or Global Privacy Control, or a visitor has saved an opt-out. Each has a checkbox in the library; untick it to stop sharing. ZIP and folder names are always excluded. No external analytics script, session replay or page-content capture is loaded. See the [telemetry setup and event reference](docs/telemetry.md).

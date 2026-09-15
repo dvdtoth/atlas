@@ -1,4 +1,4 @@
-import { Reader } from '../../vendor/zip.mjs';
+import { Reader } from './zip-runtime.mjs';
 
 // ZIP headers and small bodies share pages instead of making separate Blob IO
 // round trips. Only compressed bytes are cached; zip.js still validates entries.

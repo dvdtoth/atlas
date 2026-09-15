@@ -2,7 +2,8 @@
   "packages": {
     "web-tree-sitter": "0.25.10",
     "tree-sitter-wasms": "0.1.13",
-    "@zip.js/zip.js": "2.15.0"
+    "@zip.js/zip.js": "2.15.0",
+    "web-streams-polyfill": "4.3.0"
   },
   "assets": [
     {
@@ -11,9 +12,24 @@
       "sha256": "ab836db4624bf6e937d5decc65570e2f0ed980e864f3ff523629c887f20ed8d8"
     },
     {
+      "file": "zip-portable.mjs",
+      "bytes": 200305,
+      "sha256": "31b0f27ab5c9c2f1ecc6df9a81422171c6bf5232c35a731281dfe7a52f1c1463"
+    },
+    {
       "file": "LICENSE.zip.js",
       "bytes": 1501,
       "sha256": "1b7ebc8d7889ed25491484ab2b102370742ca6c0b26650a0c62cc2269b579b84"
+    },
+    {
+      "file": "streams.mjs",
+      "bytes": 65258,
+      "sha256": "62e42e4f311453490174696029accb5aca6103d46873b26ba83c3b8c5ea418a0"
+    },
+    {
+      "file": "LICENSE.web-streams-polyfill",
+      "bytes": 1120,
+      "sha256": "08da29e331bf06ef511aff652e22de39a72a7e1547864bbc53d2686b5e045ef3"
     },
     {
       "file": "tree-sitter.js",

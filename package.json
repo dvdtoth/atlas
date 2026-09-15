@@ -16,6 +16,7 @@
     "fake-indexeddb": "6.2.4",
     "prettier": "3.9.6",
     "tree-sitter-wasms": "0.1.13",
+    "web-streams-polyfill": "4.3.0",
     "web-tree-sitter": "0.25.10"
   },
   "description": "A spatial code browsing experiment. Explore repositories in 2D and 3D, entirely in your browser.",

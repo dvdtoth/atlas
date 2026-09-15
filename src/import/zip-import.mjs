@@ -1,4 +1,4 @@
-import { ZipReader } from '../../vendor/zip.mjs';
+import { ZipReader, WritableStream, zipStreamOptions } from './zip-runtime.mjs';
 import { CachedZipReader } from './zip-reader.mjs';
 import { importFolderFiles, IGNORED } from './local-files.mjs';
 
@@ -22,7 +22,7 @@ export async function importZipFiles(
     throw Error('This ZIP exceeds the 2 GiB compressed-file limit.');
   const compressed = new CachedZipReader(archive, { signal });
   const reader = new ZipReader(compressed, {
-    useWebWorkers: false,
+    ...zipStreamOptions,
     strictness: 'strict',
     checkCrc32: true,
     checkOverlappingEntry: true,
@@ -110,7 +110,7 @@ export async function importZipFiles(
             stage: 'unpacking',
             message: 'Unpacking and indexing source on your device…',
           });
-          await entry.getData(output, { signal, useWebWorkers: false });
+          await entry.getData(output, { signal, ...zipStreamOptions });
           signal?.throwIfAborted();
           if (length !== entry.uncompressedSize)
             throw Error('ZIP entry has an inconsistent expanded size.');
