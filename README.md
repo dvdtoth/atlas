@@ -56,7 +56,7 @@ See [architecture and resource budgets](docs/architecture.md) for details.
 
 ## Privacy
 
-Source, file paths and search queries stay on your device. Public imports contact GitHub directly; the static host serves application assets. Local files are never uploaded. Optional Umami analytics require configuration and visitor consent. A separate opt-in can share the names of repositories imported from public GitHub. ZIP and folder names are always excluded. No external analytics script, session replay or page-content capture is loaded. See the [telemetry setup and event reference](docs/telemetry.md).
+Source, file paths and search queries stay on your device. Public imports contact GitHub directly; the static host serves application assets. Local files are never uploaded. On the official site, Umami usage analytics and public GitHub repository-name sharing start enabled unless the browser signals Do Not Track or Global Privacy Control, or a visitor has saved an opt-out. Each has a checkbox in the library; untick it to stop sharing. ZIP and folder names are always excluded. No external analytics script, session replay or page-content capture is loaded. See the [telemetry setup and event reference](docs/telemetry.md).
 
 Analytics are unconfigured in source, forks and local builds. Only the official GitHub Pages build includes its hosted configuration, restricted to `https://dvdtoth.github.io/atlas/`. Other deployments must supply their own analytics configuration.
 

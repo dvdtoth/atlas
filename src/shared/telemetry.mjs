@@ -55,7 +55,7 @@ export function eventPayload(
 ) {
   if ((name !== null && !EVENTS.has(name)) || !validConfig(config) || !Object.hasOwn(PAGES, page))
     return null;
-  // Only the dedicated event can carry an identity, and only with separate consent.
+  // Only the dedicated event can carry an identity, with repository sharing enabled.
   if (
     name === 'repository_viewed' &&
     (!repositoryConsent ||
@@ -154,20 +154,43 @@ export function createTelemetry({
     },
   };
 }
-export function savedConsent() {
-  return savedChoice('atlas.analytics.consent');
-}
-export function savedRepositoryConsent() {
-  return savedChoice('atlas.analytics.repositories');
-}
-function savedChoice(key) {
-  if (typeof window === 'undefined') return false;
-  try {
-    return localStorage.getItem(key) === 'yes';
-  } catch {
-    return false;
+export function createAnalyticsPreferences({
+  defaultShare = false,
+  storage = () => (typeof window === 'undefined' ? null : window.localStorage),
+} = {}) {
+  const blocked = new Set();
+  function read(key) {
+    if (blocked.has(key)) return false;
+    try {
+      const choice = storage().getItem(`atlas.analytics.${key}`);
+      return choice === null ? defaultShare === true : choice === 'yes';
+    } catch {
+      return false;
+    }
   }
+  function write(key, value) {
+    // A failed write must not restore default sharing after an opt-out in this page.
+    blocked.add(key);
+    try {
+      storage().setItem(`atlas.analytics.${key}`, value === true ? 'yes' : 'no');
+      blocked.delete(key);
+    } catch {}
+  }
+  return {
+    usage: () => read('consent'),
+    repositories: () => read('repositories'),
+    setUsage(value) {
+      write('consent', value);
+      if (value !== true) write('repositories', false);
+    },
+    setRepositories(value) {
+      write('repositories', value === true && read('consent'));
+    },
+  };
 }
+const preferences = createAnalyticsPreferences({ defaultShare: analytics.defaultShare });
+export const savedConsent = preferences.usage;
+export const savedRepositoryConsent = preferences.repositories;
 const pathname = globalThis.location?.pathname || '';
 export const telemetry = createTelemetry({
   consent: savedConsent(),
@@ -180,14 +203,8 @@ export const telemetry = createTelemetry({
       : 'library',
 });
 export function setAnalyticsConsent(value) {
-  telemetry.setConsent(value);
-  try {
-    localStorage.setItem('atlas.analytics.consent', value ? 'yes' : 'no');
-  } catch {}
-  if (!value) setRepositoryConsent(false);
+  preferences.setUsage(value);
 }
 export function setRepositoryConsent(value) {
-  try {
-    localStorage.setItem('atlas.analytics.repositories', value && savedConsent() ? 'yes' : 'no');
-  } catch {}
+  preferences.setRepositories(value);
 }

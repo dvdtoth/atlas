@@ -59,18 +59,20 @@
         </p>
         <h2>Optional usage telemetry</h2>
         <p>
-          Analytics are disabled unless the site operator configures an Umami endpoint and you
-          enable the checkbox in the library. Browser Do Not Track and Global Privacy Control
-          override that choice. You can withdraw it at any time.
+          On the official GitHub Pages site, Umami usage analytics and public repository-name
+          sharing start enabled for new visitors. Saved opt-outs are respected. Browser Do Not Track
+          and Global Privacy Control disable both options. Untick either checkbox in the library to
+          stop sharing; disabling usage analytics also disables repository-name sharing. Local
+          builds and forks have no analytics endpoint configured.
         </p>
         <p>
           Enabled events contain only allowlisted actions, coarse file/download counts, rounded
           timings, search result counts, fixed app page names, and modes such as “2d” or “symbols”.
-          A separate, optional checkbox allows sharing the owner/name of repositories imported from
-          public GitHub when their map opens. ZIP and folder names are never sent. Without that
-          extra choice, no repository identity is sent. Atlas sends no file paths, code, symbol
-          names, query text, page query strings, referrer, error messages, persistent tracking ID,
-          or session replay. It does not load an external analytics script or read page content for
+          A separate checkbox controls sharing the owner/name of repositories imported from public
+          GitHub when their map opens. ZIP and folder names are never sent. With that option
+          disabled, no repository identity is sent. Atlas sends no file paths, code, symbol names,
+          query text, page query strings, referrer, error messages, persistent tracking ID, or
+          session replay. It does not load an external analytics script or read page content for
           tracking.
         </p>
         <p>

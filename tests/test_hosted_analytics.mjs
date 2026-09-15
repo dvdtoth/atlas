@@ -55,10 +55,12 @@ test('copied Pages artifacts stay disabled outside the exact production origin a
     const config = evaluate(url);
     assert.equal(config.endpoint, '', String(url));
     assert.equal(config.website, '', String(url));
+    assert.notEqual(config.defaultShare, true, String(url));
   }
   for (const path of ['', 'index.html', 'viewer.html?project=local-id', 'privacy.html']) {
     const config = evaluate('https://dvdtoth.github.io/atlas/' + path);
     assert.equal(config.endpoint, 'https://cloud.umami.is/api/send');
     assert.equal(config.website, '639a9cc5-8e01-4b7e-bb63-6ac31a07bb3a');
+    assert.equal(config.defaultShare, true);
   }
 });
