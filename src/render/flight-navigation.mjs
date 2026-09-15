@@ -8,7 +8,7 @@ export function projectFlightScale(lines) {
 }
 
 export function keyboardFlightSpeed(speed, cruise = 1, boost = false, projectScale = 1) {
-  return speed * cruise * (boost ? 4 : 1) * 0.5 * projectScale;
+  return speed * cruise * (boost ? 4 : 1) * 0.75 * projectScale;
 }
 
 // Aim in the same camera-facing source frame used by picking and text tiles.

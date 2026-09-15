@@ -5,16 +5,16 @@ import { orientFold, pick3D } from '../src/render/visibility.mjs';
 import { basis } from '../src/render/core.mjs';
 import * as navigation from '../src/render/flight-navigation.mjs';
 
-test('web keyboard flight uses half the previous normal and Shift speed at every cruise scale', () => {
+test('web keyboard flight uses the tuned normal and Shift speed at every cruise scale', () => {
   assert.equal(typeof navigation.keyboardFlightSpeed, 'function');
   for (const speed of [1, 160, 1e6])
     for (const cruise of [0.05, 1, 100]) {
-      assert.equal(navigation.keyboardFlightSpeed(speed, cruise, false), speed * cruise * 0.5);
-      assert.equal(navigation.keyboardFlightSpeed(speed, cruise, true), speed * cruise * 4 * 0.5);
+      assert.equal(navigation.keyboardFlightSpeed(speed, cruise, false), speed * cruise * 0.75);
+      assert.equal(navigation.keyboardFlightSpeed(speed, cruise, true), speed * cruise * 4 * 0.75);
     }
 });
 
-test('small projects slow normal and boosted flight while large projects keep their current pace', () => {
+test('small projects slow normal and boosted flight relative to large projects', () => {
   assert.equal(typeof navigation.projectFlightScale, 'function');
   const small = navigation.projectFlightScale(19549),
     medium = navigation.projectFlightScale(500000),
@@ -27,7 +27,7 @@ test('small projects slow normal and boosted flight while large projects keep th
       boosted = navigation.keyboardFlightSpeed(160, cruise, true, small);
     assert.ok(normal < navigation.keyboardFlightSpeed(160, cruise, false, large) / 3);
     assert.equal(boosted, normal * 4);
-    assert.equal(navigation.keyboardFlightSpeed(160, cruise, true, large), 320 * cruise);
+    assert.equal(navigation.keyboardFlightSpeed(160, cruise, true, large), 480 * cruise);
   }
 });
 
